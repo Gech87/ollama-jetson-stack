@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: dustynv/ollama:r36.4-cu129-24.04
+    container_name: ollama-prd
+    runtime: nvidia
+    shm_size: 8g
+    restart: unless-stopped
+    command: /bin/bash -c "ollama serve"
+    volumes:
+      - ../data/prd/ollama:/data
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui-prd
+    restart: unless-stopped
+    volumes:
+      - ../data/prd/open-webui:/app/backend/data
+    ports:
+      - "8080:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama-prd:11434
+      - ENABLE_SIGNUP=false
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}

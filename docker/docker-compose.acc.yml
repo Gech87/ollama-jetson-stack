@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: dustynv/ollama:r36.4-cu129-24.04
+    container_name: ollama-acc
+    runtime: nvidia
+    shm_size: 8g
+    restart: unless-stopped
+    command: /bin/bash -c "ollama serve"
+    volumes:
+      - ../data/acc/ollama:/data
+    ports:
+      - "11436:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui-acc
+    restart: unless-stopped
+    volumes:
+      - ../data/acc/open-webui:/app/backend/data
+    ports:
+      - "8082:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama-acc:11434
+      - ENABLE_SIGNUP=true
+      - DEFAULT_USER_ROLE=pending
+      - WEBUI_SECRET_KEY=acc-secret-key

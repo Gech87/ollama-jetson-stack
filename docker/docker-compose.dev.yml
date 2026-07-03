@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: dustynv/ollama:r36.4-cu129-24.04
+    container_name: ollama-dev
+    runtime: nvidia
+    # REMOVE: network_mode: host
+    shm_size: 4g
+    restart: unless-stopped
+    command: /bin/bash -c "ollama serve"
+    volumes:
+      - ../data/dev/ollama:/data
+    ports:
+      - "11435:11434"  # Map host 11435 to container 11434
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434  # Container listens on 11434
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui-dev
+    # REMOVE: network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ../data/dev/open-webui:/app/backend/data
+    ports:
+      - "8081:8080"  # Map host 8081 to container 8080
+    environment:
+      - OLLAMA_BASE_URL=http://ollama-dev:11434  # Use container name, not localhost
+      - ENABLE_SIGNUP=true
+      - DEFAULT_USER_ROLE=pending
+      - WEBUI_SECRET_KEY=dev-secret-key
