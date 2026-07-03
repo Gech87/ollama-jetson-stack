@@ -3,10 +3,14 @@ name: Deploy Ollama Stack
 on:
   push:
     branches:
-      - dev
-      - main
+      - dev      # Push to dev → deploy to dev environment
+      - main     # Push to main → deploy to acc and prd
   workflow_dispatch:
     inputs:
+      model:
+        description: 'Model to pull (e.g., llama3.2:3b)'
+        required: false
+        default: ''
       environment:
         description: 'Environment to deploy'
         required: true
@@ -16,22 +20,74 @@ on:
           - dev
           - acc
           - prd
+          - all
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to environment
+      - name: Add host to known_hosts
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Dev
+        if: |
+          github.ref == 'refs/heads/dev' ||
+          (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'dev' || github.event.inputs.environment == 'all'))
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "cd ~/Projects/ollama-stack && \
              git pull && \
-             ./scripts/deploy.sh ${{ github.event.inputs.environment || 'dev' }}"
+             ./scripts/deploy.sh dev"
+          
+          # Pull model if specified
+          if [ -n "${{ github.event.inputs.model }}" ]; then
+            ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "sudo docker exec ollama-dev ollama pull ${{ github.event.inputs.model }}"
+          fi
+
+      - name: Deploy to Acc
+        if: |
+          github.ref == 'refs/heads/main' ||
+          (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'acc' || github.event.inputs.environment == 'all'))
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd ~/Projects/ollama-stack && \
+             git pull && \
+             ./scripts/deploy.sh acc"
+          
+          # Pull model if specified
+          if [ -n "${{ github.event.inputs.model }}" ]; then
+            ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "sudo docker exec ollama-acc ollama pull ${{ github.event.inputs.model }}"
+          fi
+
+      - name: Deploy to Prd
+        if: |
+          github.ref == 'refs/heads/main' ||
+          (github.event_name == 'workflow_dispatch' && (github.event.inputs.environment == 'prd' || github.event.inputs.environment == 'all'))
+        run: |
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd ~/Projects/ollama-stack && \
+             git pull && \
+             ./scripts/deploy.sh prd"
+          
+          # Pull model if specified
+          if [ -n "${{ github.event.inputs.model }}" ]; then
+            ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "sudo docker exec ollama-prd ollama pull ${{ github.event.inputs.model }}"
+          fi
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment verification ==="
+          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
