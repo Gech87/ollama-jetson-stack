@@ -259,11 +259,11 @@ ollama-jetson-stack/
 
 ### Access URLs
 
-| Environment | Local URL | Tailscale URL |
-|-------------|-----------|---------------|
-| Dev | http://localhost:8081 | http://100.105.218.35:8081 |
-| Acc | http://localhost:8082 | http://100.105.218.35:8082 |
-| Prd | http://localhost:8080 | http://100.105.218.35:8080 |
+| Environment | Local URL (on Jetson) | Local Network URL | Tailscale URL |
+|-------------|----------------------|-------------------|---------------|
+| Dev | http://localhost:8081 | http://192.168.1.115:8081 | http://100.105.218.35:8081 |
+| Acc | http://localhost:8082 | http://192.168.1.115:8082 | http://100.105.218.35:8082 |
+| Prd | http://localhost:8080 | http://192.168.1.115:8080 | http://100.105.218.35:8080 |
 
 ---
 
